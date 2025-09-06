@@ -563,8 +563,6 @@ export default function App() {
       <Styles />
       <div className={density === "dense" ? "wrap dense" : "wrap"}>
         <h1 className="title">RentMax</h1>
-        <p className="sub">Portfolio + Loan & Returns + Power UX — sticky focus intact.</p>
-
         <div className="grid" style={wide ? undefined : { gridTemplateColumns: "1fr" }}>
           {/* LEFT: Inputs + presets + hints */}
           <section className="card">
