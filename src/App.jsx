@@ -62,7 +62,7 @@ function Styles() {
         html, body { background:#fff !important; color:#000 !important; }
         .wrap { padding: 0; }
         .card { box-shadow:none; border:1px solid #ddd; }
-        .barSticky, .chips, .slider, .sub, .portfolio, .mini { display:none !important; }
+        .barSticky, .chips, .slider, .sub, .portfolio, .mini { display:none !Important; }
         .grid { grid-template-columns: 1fr !important; gap: 0; }
       }
     `}</style>
@@ -125,7 +125,7 @@ const DEFAULTS = {
   termYears: "30",
   pmiAnnualPct: "0.6",
   closingCostPct: "3",
-  useLoan: "1",   // "1" = use loan model; "0" = use mortgagePI field
+  useLoan: "1",
   capexAnnual: "0",
 };
 
@@ -179,11 +179,11 @@ function runCalc(values) {
   const annualDebt = monthlyPI * 12;
   const dscr = annualDebt > 0 ? noi / annualDebt : null;
 
-  // CoC (uses down payment + closing costs)
+  // CoC
   const cashInvested = purchasePrice > 0 ? (purchasePrice * (downPct / 100)) + (purchasePrice * (closingPct / 100)) : 0;
   const cashOnCash = cashInvested > 0 ? (annualProfit / cashInvested) * 100 : null;
 
-  // Break-even rent & occupancy (effective = R*(1-vac%-mgmt%))
+  // Break-even (effective = R*(1-vac%-mgmt%))
   const denom = 1 - (vacPct / 100) - (mgmtPct / 100);
   const breakEvenRent = denom > 0 ? monthlyFixed / denom : null;
   const breakEvenOcc = rentMid > 0 ? Math.max(0, Math.min(1, (monthlyFixed / rentMid) + (mgmtPct / 100))) : null;
@@ -209,7 +209,7 @@ export default function App() {
   // Keep values as strings (sticky focus lives in Inputs.jsx)
   const [form, setForm] = useState({ ...DEFAULTS });
 
-  // Sticky focus (these props are required by your existing Inputs.jsx)
+  // Sticky focus (required by Inputs.jsx)
   const [activeField, setActiveField] = useState(null);
   const [selection, setSelection] = useState({ start: null, end: null });
   const setField = (key, value, selStart, selEnd) => {
@@ -297,13 +297,11 @@ export default function App() {
   const fileJsonRef = useRef(null);
 
   /* ----- Bulk CSV Import (map → preview → import) ----- */
-  const [csvMap, setCsvMap] = useState(null); // { headers:[], rows:[{}], map:{key->header} }
+  const [csvMap, setCsvMap] = useState(null);
   const fileCsvRef = useRef(null);
 
   const parseCSV = (text) => {
-    // simple CSV parser (handles quoted cells)
     const rows = [];
-    const re = /(?:^|\\n)(?:(?:"([^"]*(?:""[^"]*)*)"|([^"\\n]*))(?:,|$))/g;
     const lines = text.replace(/\r/g, "").split("\n").filter(Boolean);
     const header = splitCSVLine(lines[0]);
     for (let i = 1; i < lines.length; i++) {
@@ -357,7 +355,6 @@ export default function App() {
         (k.includes("term") ? "termYears" : null);
       if (hit) m[hit] = h;
     });
-    // ensure targetRent at least
     if (!m.targetRent) m.targetRent = headers.find(h => /rent/i.test(h)) || headers[0];
     return m;
   };
@@ -422,46 +419,24 @@ export default function App() {
     a.href = URL.createObjectURL(blob); a.download = "rentmax_export.csv";
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
   };
-  
-  const printPDF = () => {
-    const report = document.getElementById("report");
-    if (!report) { window.print(); return; }
+  const printPDF = () => window.print();
 
-    const html = `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>RentMax Report</title>
-  <style>
-    @page { size: A4; margin: 16mm; }
-    body { font: 14px/1.4 system-ui, sans-serif; color: #000; }
-    .row { display:flex; justify-content:space-between; padding:6px 0; }
-    .label { color:#555; font-size:12px; }
-    .hr { border-top:1px solid #ddd; margin:8px 0; }
-    .pos { color:#065f46; font-weight:700; }
-    .neg { color:#b91c1c; font-weight:700; }
-    .mono { font-variant-numeric: tabular-nums; }
-  </style>
-</head>
-<body>
-  <div style="max-width:720px; margin:0 auto;">
-    ${report.outerHTML}
-  </div>
-  <script>
-    window.onload = () => { window.print(); setTimeout(()=>window.close(), 200); };
-  </script>
-</body>
-</html>`;
+  /* ----- Stripe Checkout (Go Pro) ----- */
+  async function startCheckout() {
+    try {
+      const res = await fetch("/api/create-checkout-session", { method: "POST" });
+      const data = await res.json();
+      if (data?.url) {
+        window.location.href = data.url; // Redirect to Stripe Checkout
+      } else {
+        alert("Unable to start checkout");
+      }
+    } catch {
+      alert("Checkout error");
+    }
+  }
 
-    const w = window.open("", "_blank", "width=900,height=1000");
-    if (!w) { window.print(); return; }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-  };
-
-
-  /* ----- Keyboard power (save, quick switch, esc clear, nudges already in place) ----- */
+  /* ----- Keyboard power (save, quick switch, esc clear, nudges) ----- */
   const selectRef = useRef(null);
   useEffect(() => {
     const steps = {
@@ -471,19 +446,15 @@ export default function App() {
       vacancyRatePct: 1, mgmtFeePct: 1, pmiAnnualPct: 0.1, closingCostPct: 0.25
     };
     const onKey = (e) => {
-      // Save
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault(); saveScenario(); return;
       }
-      // Quick switch
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault(); try { selectRef.current?.focus(); } catch {} return;
       }
-      // Esc clear current field
       if (e.key === "Escape" && activeField) {
         e.preventDefault(); setFieldExternal(activeField, ""); return;
       }
-      // Nudges
       if (!activeField || !(activeField in steps)) return;
       if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
       e.preventDefault();
@@ -592,6 +563,7 @@ export default function App() {
       <Styles />
       <div className={density === "dense" ? "wrap dense" : "wrap"}>
         <h1 className="title">RentMax</h1>
+        <p className="sub">Portfolio + Loan & Returns + Power UX — sticky focus intact.</p>
 
         <div className="grid" style={wide ? undefined : { gridTemplateColumns: "1fr" }}>
           {/* LEFT: Inputs + presets + hints */}
@@ -640,6 +612,9 @@ export default function App() {
                 <button className="btn" type="button" onClick={downloadCSV}>CSV</button>
                 <button className="btn" type="button" onClick={printPDF}>Print/PDF</button>
 
+                {/* NEW: Go Pro (Stripe Checkout) */}
+                <button className="btn" type="button" onClick={startCheckout} title="Subscribe to Pro">Go Pro</button>
+
                 <button className="btn" type="button" onClick={exportJSON} title="Export scenarios">Export JSON</button>
                 <input ref={fileJsonRef} type="file" accept="application/json" style={{ display: "none" }} onChange={(e)=>importJSON(e.target.files?.[0])}/>
                 <button className="btn" type="button" onClick={()=>fileJsonRef.current?.click()} title="Import scenarios">Import JSON</button>
@@ -647,6 +622,7 @@ export default function App() {
                 <input ref={fileCsvRef} type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={(e)=>onImportCSV(e.target.files?.[0])}/>
                 <button className="btn" type="button" onClick={()=>fileCsvRef.current?.click()} title="Bulk import properties via CSV">Import CSV</button>
               </div>
+
               {/* Bulk CSV mapping/preview */}
               {csvMap && (
                 <div style={{ marginTop: 10, borderTop: "1px solid #1f2a44", paddingTop: 10 }}>
@@ -681,7 +657,7 @@ export default function App() {
               <button className="btn" type="button" onClick={quickAdd}>Quick Add</button>
             </div>
 
-            {/* Finance add-ons (masked on blur, raw while typing) */}
+            {/* Finance add-ons */}
             <div className="row" style={{ paddingTop: 4 }}>
               <span className="label">Purchase Price</span>
               <input className="inputSm mono" style={{ width: 180, textAlign: "right" }} type="text" inputMode="numeric"
@@ -709,7 +685,7 @@ export default function App() {
               <input className="inputSm mono" style={{ width: 100, textAlign: "right" }} type="text" inputMode="numeric"
                 value={form.closingCostPct} onChange={(e)=>setFieldExternal("closingCostPct", e.target.value)} />
               <span className="label">Use Loan</span>
-              <select className="selectSm" style={{ width: 220 }} value={form.useLoan} onChange={(e)=>setFieldExternal("useLoan", e.target.value)}>
+              <select className="selectSm" style={{ width: 120 }} value={form.useLoan} onChange={(e)=>setFieldExternal("useLoan", e.target.value)}>
                 <option value="1">Yes</option>
                 <option value="0">No (use P&I field)</option>
               </select>
@@ -737,7 +713,6 @@ export default function App() {
 
             <div className="hr" />
             {/* Results */}
-<div id="report">
             <div className="row"><span className="label">Address</span><span>{form.address || "—"}</span></div>
             <div className="row"><span className="label">Beds / Baths / SqFt</span><span>{`${form.beds || 0} / ${form.baths || 0} / ${form.sqft || 0}`}</span></div>
             <div className="hr" />
@@ -770,14 +745,7 @@ export default function App() {
             <div className="row"><span className="label">Break-Even Rent</span><span className="mono">{calc.breakEvenRent==null?"—":fmtUSD(calc.breakEvenRent)}</span></div>
             <div className="row"><span className="label">Break-Even Occupancy</span><span className="mono">{calc.breakEvenOcc==null?"—":fmtPct((calc.breakEvenOcc*100))}</span></div>
 
-            
-            <div className="hr" />
-            <div style={{ fontSize: "11px", color: "#6b7280", marginTop: "12px", textAlign: "center" }}>
-              Disclaimer: This report is for informational purposes only and is not financial advice.
-            </div>
-
-        </div>
-{/* Portfolio (table) */}
+            {/* Portfolio (table) */}
             <div className="hr" />
             <div className="portfolio">
               <div className="row" style={{ paddingTop: 0 }}>
