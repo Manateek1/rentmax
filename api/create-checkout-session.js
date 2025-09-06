@@ -1,7 +1,5 @@
-// /api/create-checkout-session.js
 import Stripe from "stripe";
 
-// Initialize Stripe with your secret key from Vercel env vars
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
@@ -16,7 +14,7 @@ export default async function handler(req, res) {
       mode: "subscription",
       line_items: [
         {
-          price: process.env.PRICE_ID, // Your test Price ID
+          price: process.env.PRICE_ID,
           quantity: 1,
         },
       ],
@@ -27,6 +25,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ url: session.url });
   } catch (err) {
     console.error("Stripe error:", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message, stack: err.stack });
   }
 }
