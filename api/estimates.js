@@ -6,11 +6,11 @@ export default async function handler(req, res) {
 
   // Mock example data — later we’ll connect this to AI or Zillow
   const demoData = {
-    "1015 Hoedel Ct, Lafayette, CA 94549": {
-      beds: 5,
-      baths: 5,
-      sqft: 3537,
-      estRent: 13500
+    "123 Main St, San Francisco, CA": {
+      beds: 3,
+      baths: 2,
+      sqft: 3500,
+      estRent: 4200
     }
   };
 
