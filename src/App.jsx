@@ -1,5 +1,10 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import Inputs from "./utils/Inputs.jsx";
+// If you're on localhost, call the deployed API instead.
+// Replace the domain if your Vercel URL is different.
+const API_BASE = typeof window !== "undefined" && window.location.origin.includes("localhost")
+  ? "https://rentmaxai.vercel.app"
+  : "";
 
 /* ---------- Global CSS: full-bleed dark + density + print ---------- */
 function Styles() {
@@ -62,7 +67,7 @@ function Styles() {
         html, body { background:#fff !important; color:#000 !important; }
         .wrap { padding: 0; }
         .card { box-shadow:none; border:1px solid #ddd; }
-        .barSticky, .chips, .slider, .sub, .portfolio, .mini { display:none !Important; }
+        .barSticky, .chips, .slider, .sub, .portfolio, .mini { display:none !important; }
         .grid { grid-template-columns: 1fr !important; gap: 0; }
       }
     `}</style>
@@ -566,13 +571,51 @@ export default function App() {
         <div className="grid" style={wide ? undefined : { gridTemplateColumns: "1fr" }}>
           {/* LEFT: Inputs + presets + hints */}
           <section className="card">
-            <Inputs
-              values={form}
-              setField={setField}
-              activeField={activeField}
-              selection={selection}
-              onFocusField={setActiveField}
-            />
+  {/* —— AI Autofill (demo) —— */}
+  <div className="row" style={{ alignItems: "center", paddingTop: 0 }}>
+    <span className="label">AI Autofill (demo)</span>
+    <div style={{ display: "flex", gap: 8, flex: 1 }}>
+      <input
+        className="inputSm"
+        style={{ flex: 1 }}
+        type="text"
+        placeholder="Type an address (e.g., 1015 Hoedel Ct, Lafayette, CA 94549)"
+        value={form.address}
+        onChange={(e) => setFieldExternal("address", e.target.value)}
+      />
+      <button
+        className="btn"
+        type="button"
+        onClick={async () => {
+          const addr = (form.address || "").trim();
+          if (!addr) return;
+          try {
+            const qs = new URLSearchParams({ address: addr }).toString();
+            const r = await fetch(`${API_BASE}/api/estimates?${qs}`);
+            const json = await r.json();
+
+            if (json?.beds)   setFieldExternal("beds", String(json.beds));
+            if (json?.baths)  setFieldExternal("baths", String(json.baths));
+            if (json?.sqft)   setFieldExternal("sqft", String(json.sqft));
+            if (json?.estRent) setFieldExternal("targetRent", String(json.estRent));
+          } catch (err) {
+            console.error(err);
+          }
+        }}
+      >
+        Autofill
+      </button>
+    </div>
+  </div>
+
+  <Inputs
+    values={form}
+    setField={setField}
+    activeField={activeField}
+    selection={selection}
+    onFocusField={setActiveField}
+  />
+
             <div className="chips">
               <button className="chip" onClick={() => { setFieldExternal("vacancyRatePct","3"); setFieldExternal("mgmtFeePct","0"); setFieldExternal("maintenance","200"); }} type="button">Optimistic</button>
               <button className="chip" onClick={() => { setFieldExternal("vacancyRatePct","5"); setFieldExternal("mgmtFeePct","5"); setFieldExternal("maintenance","300"); }} type="button">Base</button>
