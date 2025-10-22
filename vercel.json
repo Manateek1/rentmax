@@ -1,1 +1,9 @@
-{ "functions": { "api/estimates.js": { "runtime": "nodejs18.x" } } }
+{
+  "functions": {
+    "api/estimates.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
+}
